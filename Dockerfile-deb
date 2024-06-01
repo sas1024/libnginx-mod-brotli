@@ -1,63 +1,46 @@
-# Dockerfile for building libnginx-mod-brotli for Debian / Ubuntu
-#
-# Usage :
-#
-#   docker build -t build-nginx-brotli -f Dockerfile-deb \
-#       --build-arg DISTRIB=debian --build-arg RELEASE=bullseye \
-#       --build-arg NGINX_VERSION=1.18.0 .
-#
-# Or Ubuntu :
-#
-#   docker build -t build-nginx-brotli -f Dockerfile-deb \
-#       --build-arg DISTRIB=ubuntu --build-arg RELEASE=bionic \
-#       --build-arg NGINX_VERSION=1.18.0 .
-#
-# Then :
-#
-#   docker run build-nginx-brotli
-#   docker cp $(docker ps -l -q):/src ~/Downloads/
-# And once you don't need it anymore :
-#   docker rm $(docker ps -l -q)
-#
-# Latest ngx_brotli version : https://github.com/google/ngx_brotli
-#
-# Latest nginx version : https://nginx.org/en/download.html
-# Or :
-# curl -s https://nginx.org/packages/debian/pool/nginx/n/nginx/ |grep '"nginx_' | sed -n "s/^.*\">nginx_\(.*\)\~.*$/\1/p" |sort -Vr |head -1| cut -d'-' -f1
-
-ARG DISTRIB=debian
-ARG RELEASE=bullseye
+ARG DISTRIB=ubuntu
+ARG RELEASE=focal
 
 FROM ${DISTRIB}:${RELEASE}
-LABEL org.opencontainers.image.authors="Cyril Aknine <caknine@clever-age.com>"
 
 ARG DISTRIB
 ARG RELEASE
-#ARG CHANGELOG_MSG
-ARG DEBIAN_FRONTEND="noninteractive"
-ENV TZ=Europe/Paris
+ARG NGINX_VERSION=1.26.0
+ARG NGINX_DEB_RELEASE=1
+ARG BROTLI_VERSION=1.1.0
+
+ENV DEBIAN_FRONTEND="noninteractive"
 
 RUN apt-get update && apt-get --no-install-recommends --no-install-suggests -y install \
-    git wget ca-certificates curl openssl gnupg2 apt-transport-https \
+    cmake git wget ca-certificates curl openssl gnupg2 apt-transport-https \
     unzip make libpcre3-dev zlib1g-dev build-essential devscripts \
     debhelper quilt lsb-release libssl-dev lintian uuid-dev
 
-ARG NGINX_VERSION=1.18.0
-ARG NGINX_DEB_RELEASE=1
-ARG BROTLI_VERSION=1.0.9
-
 WORKDIR /root
+
+RUN echo "*** Building ngx_brotli ${BROTLI_VERSION} against ${NGINX_VERSION}-${NGINX_DEB_RELEASE}~${RELEASE} ***"
 
 RUN git clone https://github.com/google/ngx_brotli.git && cd ngx_brotli && git submodule update --init --recursive
 RUN wget -qO - https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz | tar zxvf -
 
 COPY debian nginx-${NGINX_VERSION}/debian
-
-RUN sed -i "s/bullseye; urgency/${RELEASE}; urgency/g" nginx-${NGINX_VERSION}/debian/changelog
-RUN sed -i "s/~bullseye)/~${RELEASE})/g" nginx-${NGINX_VERSION}/debian/changelog
 RUN sed -i "s/{NGINX_VERSION}/${NGINX_VERSION}-${NGINX_DEB_RELEASE}~${RELEASE}/g" nginx-${NGINX_VERSION}/debian/control
 
-RUN cd nginx-${NGINX_VERSION} && dpkg-buildpackage
+RUN mkdir ngx_brotli/deps/brotli/out
+WORKDIR /root/ngx_brotli/deps/brotli/out
+RUN cmake \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_C_FLAGS="-Ofast -m64 -march=native -mtune=native -flto -funroll-loops -ffunction-sections -fdata-sections -Wl,--gc-sections" \
+    -DCMAKE_CXX_FLAGS="-Ofast -m64 -march=native -mtune=native -flto -funroll-loops -ffunction-sections -fdata-sections -Wl,--gc-sections" \
+    -DCMAKE_INSTALL_PREFIX=./installed .. && \
+    cmake --build . --config Release --target brotlienc
+
+WORKDIR /root/nginx-${NGINX_VERSION}
+RUN dch -v ${BROTLI_VERSION}+${NGINX_VERSION}-${NGINX_DEB_RELEASE}~${RELEASE} "Build for brotli ${BROTLI_VERSION} against nginx ${NGINX_VERSION}"
+RUN dpkg-buildpackage
+
+WORKDIR /root
 
 RUN mkdir /src && mv libnginx-mod-brotli* /src/ && cp nginx-${NGINX_VERSION}/debian/changelog /src/
 RUN dpkg -c /src/libnginx-mod-brotli_*.deb

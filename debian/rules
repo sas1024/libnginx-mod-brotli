@@ -1,7 +1,5 @@
 #!/usr/bin/make -f
 
-package = libnginx-mod-brotli
-
 %:
 	dh $@
 
