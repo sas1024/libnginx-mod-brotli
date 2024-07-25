@@ -1,12 +1,12 @@
 ARG DISTRIB=ubuntu
 ARG RELEASE=focal
 
-FROM ${DISTRIB}:${RELEASE}
+FROM amd64/${DISTRIB}:${RELEASE}
 
 ARG DISTRIB
 ARG RELEASE
-ARG NGINX_VERSION=1.26.0
-ARG NGINX_DEB_RELEASE=1
+ARG NGINX_VERSION=1.26.1
+ARG NGINX_DEB_RELEASE=2
 ARG BROTLI_VERSION=1.1.0
 
 ENV DEBIAN_FRONTEND="noninteractive"
@@ -45,8 +45,8 @@ WORKDIR /root
 RUN mkdir /src && mv libnginx-mod-brotli* /src/ && cp nginx-${NGINX_VERSION}/debian/changelog /src/
 RUN dpkg -c /src/libnginx-mod-brotli_*.deb
 
-RUN curl -L https://nginx.org/keys/nginx_signing.key | apt-key add -
-RUN echo "deb https://nginx.org/packages/${DISTRIB}/ ${RELEASE} nginx" >> /etc/apt/sources.list.d/nginx.list
+RUN curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor | tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null
+RUN echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] https://nginx.org/packages/${DISTRIB}/ ${RELEASE} nginx" >> /etc/apt/sources.list.d/nginx.list
 
 RUN apt-get update && apt-get -V --no-install-recommends --no-install-suggests -y install nginx=${NGINX_VERSION}-${NGINX_DEB_RELEASE}~${RELEASE}
 
