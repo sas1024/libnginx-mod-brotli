@@ -4,7 +4,8 @@ Dockerfiles for building libnginx-mod-brotli for Debian / Ubuntu
 [![packagecloud deb packages](https://img.shields.io/badge/deb-packagecloud.io-844fec.svg)](https://packagecloud.io/DaryL/libnginx-mod-brotli-stable) [![Build and Deploy](https://github.com/darylounet/libnginx-mod-brotli/actions/workflows/github-actions.yml/badge.svg)](https://github.com/darylounet/libnginx-mod-brotli/actions/workflows/github-actions.yml)
 
 If you're just interested in installing built packages, go there :
-https://packagecloud.io/DaryL/libnginx-mod-brotli-stable
+- https://packagecloud.io/DaryL/libnginx-mod-brotli-stable (nginx versions =< 1.24.0)
+- https://packagecloud.io/sas1024/libnginx-mod-brotli-stable (nginx versions >= 1.26.1)
 
 /!\ Warning : these packages only works with official NGiNX Ubuntu / Debian repository : https://nginx.org/en/linux_packages.html#distributions
 
