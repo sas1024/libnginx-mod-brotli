@@ -10,8 +10,6 @@ jobs:
       matrix:
         include:
           - os: ubuntu
-            dist: bionic
-          - os: ubuntu
             dist: focal
           - os: ubuntu
             dist: jammy
